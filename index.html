@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>札決め｜かるた部</title>
+<meta name="description" content="競技かるたの試合で使う50枚を、何試合分でも先に決めておけるツール">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site">
+  <h1>札　決　め</h1>
+  <p id="subtitle">試合で使う五十枚を、先に決めておく</p>
+</header>
+
+<main>
+  <!-- 作成画面 -->
+  <section id="create" class="panel">
+    <h2>予定をつくる</h2>
+    <label class="field">
+      <span>試合数</span>
+      <input id="count" type="number" min="1" max="200" value="10" inputmode="numeric">
+    </label>
+    <fieldset class="field">
+      <legend>使う決め方</legend>
+      <label class="check"><input type="checkbox" name="method" value="ones" checked>1の位で分ける<small>数字5つ・10枚×5</small></label>
+      <label class="check"><input type="checkbox" name="method" value="tens" checked>10の位で分ける<small>数字5つ・10枚×5</small></label>
+      <label class="check"><input type="checkbox" name="method" value="three" checked>3つの数字で分ける<small>数字を含む51枚から1枚除く</small></label>
+    </fieldset>
+    <p id="error" class="error" hidden></p>
+    <button id="generate" class="btn primary">札を決める</button>
+    <p class="hint">同じ決め方の中では、組み合わせを使い切るまで同じものは出ません。1〜9番は「01〜09」、100番は「00」として数えます。</p>
+  </section>
+
+  <!-- 一覧画面 -->
+  <section id="schedule" hidden>
+    <div class="toolbar">
+      <button id="share" class="btn primary">リンクを共有</button>
+      <button id="print" class="btn">印刷</button>
+      <button id="remake" class="btn ghost">作り直す</button>
+    </div>
+    <p id="toast" class="toast" hidden></p>
+    <ol id="matches" class="matches"></ol>
+  </section>
+</main>
+
+<!-- 上の句の表示 -->
+<dialog id="poem">
+  <p class="pnum"></p>
+  <p class="ptext"></p>
+  <button class="btn" value="close" onclick="this.closest('dialog').close()">閉じる</button>
+</dialog>
+
+<footer class="site">番号は小倉百人一首の歌番号です</footer>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
