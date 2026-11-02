@@ -36,23 +36,64 @@ const randInt = (n) => {
   return buf[0] % n;
 };
 
-// 試合予定を作る。決め方は選ばれたものから同じ確率で選び、
-// 同じ決め方の中では、組み合わせを使い切るまで同じものを出さない。
-export function generateSchedule(count, methods) {
-  const pools = {};
-  const refill = (m) => { pools[m] = combinations(METHODS[m].pick); };
-  methods.forEach(refill);
-  const matches = [];
-  for (let i = 0; i < count; i++) {
-    const method = methods[randInt(methods.length)];
-    if (pools[method].length === 0) refill(method);
-    const digits = pools[method].splice(randInt(pools[method].length), 1)[0];
-    let removed = null;
-    if (method === "three") {
-      const c = cardsFor(method, digits);
-      removed = c[randInt(c.length)];
+// 次の試合で、前の試合と重ねたい札の枚数（50枚のうち4割）
+export const KEEP = 20;
+// 重なりが KEEP からこの枚数までのずれなら「合っている」とみなす
+const TOLERANCE = 2;
+
+const COMBOS = Object.fromEntries(Object.keys(METHODS).map((m) => [m, combinations(METHODS[m].pick)]));
+const pickOne = (arr) => arr[randInt(arr.length)];
+
+// ある決め方で、前の試合の札（prev。最初の試合は null）との重なりが KEEP 枚に
+// いちばん近くなる数字の組み合わせを、使用回数の少ないものから返す。
+// 「3つの数字」は除く1枚で重なりを1枚だけ調整できる。
+function bestFor(method, prev, used) {
+  let bestDev = Infinity;
+  let opts = [];
+  for (const digits of COMBOS[method]) {
+    const base = cardsFor(method, digits);
+    let dev = 0, removable = null;
+    if (prev) {
+      const inter = base.filter((n) => prev.has(n));
+      let overlap = inter.length;
+      if (method === "three") {
+        // 重なりが多すぎれば重なっている札を、足りなければ重なっていない札を除く
+        const out = base.filter((n) => !prev.has(n));
+        removable = overlap > KEEP || out.length === 0 ? inter : out;
+        if (removable === inter) overlap -= 1;
+      }
+      dev = Math.abs(overlap - KEEP);
+    } else if (method === "three") {
+      removable = base;
     }
-    matches.push({ method, digits, removed, date: "" });
+    if (dev < bestDev) { bestDev = dev; opts = []; }
+    if (dev === bestDev) opts.push({ digits, removable });
+  }
+  const uses = (o) => used.get(method + o.digits.join("")) ?? 0;
+  const least = Math.min(...opts.map(uses));
+  return { dev: bestDev, opts: opts.filter((o) => uses(o) === least) };
+}
+
+// 試合予定を作る。
+// ・2試合目以降は、前の試合の札から KEEP 枚（4割）、それ以外から残り（6割）になるよう
+//   数字の組み合わせを選ぶ。重なりをその枚数にできる決め方があれば、その中から選ぶ。
+// ・決め方は、その条件を満たすもののうちから同じ確率で選ぶ。
+// ・同じ組み合わせは、条件を満たす未使用の組み合わせがある限り出さない。
+export function generateSchedule(count, methods) {
+  const used = new Map();
+  const matches = [];
+  let prev = null;
+  for (let i = 0; i < count; i++) {
+    const cand = methods.map((m) => ({ m, ...bestFor(m, prev, used) }));
+    const bestDev = Math.min(...cand.map((c) => c.dev));
+    const ok = cand.filter((c) => c.dev <= Math.max(TOLERANCE, bestDev));
+    const { m: method, opts } = pickOne(ok);
+    const o = pickOne(opts);
+    const removed = o.removable ? pickOne(o.removable) : null;
+    const k = method + o.digits.join("");
+    used.set(k, (used.get(k) ?? 0) + 1);
+    matches.push({ method, digits: o.digits, removed, date: "" });
+    prev = new Set(cardsFor(method, o.digits, removed));
   }
   return matches;
 }
